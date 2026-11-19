@@ -40,14 +40,34 @@ const placeOrder = async (req, res) => {
     // Clear the user's cart after order is created
     await userModel.findByIdAndUpdate(userId, { cartData: {} });
 
-    const line_items = items.map((item) => ({
-      price_data: {
-        currency: "inr", // BUG FIX #10: was "usd" but prices are in ₹
-        product_data: { name: item.name },
-        unit_amount: item.price * 100,
-      },
-      quantity: item.quantity,
-    }));
+
+    const line_items = items.map((item) => {
+      const customParts = [];
+      if (item.customizations?.spice) {
+        customParts.push(`Spice: ${item.customizations.spice}`);
+      }
+      if (item.customizations?.addons?.length > 0) {
+        const addonNames = item.customizations.addons
+          .map((a) => (typeof a === "string" ? a : a.name))
+          .join(", ");
+        customParts.push(`Add-ons: ${addonNames}`);
+      }
+
+      return {
+        price_data: {
+          currency: "inr",
+          product_data: {
+            name: item.name,
+            ...(customParts.length > 0 && {
+              description: customParts.join(" | "),
+            }),
+          },
+          unit_amount: Math.round(item.price * 100),
+        },
+        quantity: item.quantity,
+      };
+    });
+
 
     line_items.push({
       price_data: {

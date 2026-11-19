@@ -11,19 +11,14 @@ import { useNavigate } from "react-router-dom";
 const POLL_INTERVAL_MS = 15_000;
 
 const Orders = ({ url }) => {
-  const navigate          = useNavigate();
+  const navigate = useNavigate();
   const { token, admin, logout } = useContext(StoreContext);
-  const [orders, setOrders]     = useState([]);
-  // BUG FIX #29: No loading / error states — blank screen with zero feedback
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState(null);
-  const pollRef                 = useRef(null);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const pollRef = useRef(null);
 
   // ─── Fetch all orders ────────────────────────────────────────────────────────
-  // BUG FIX #30 (Admin Dashboard Pipeline — core fix):
-  // Original used GET /api/order/list. authMiddleware sets userId via req.body,
-  // which is always empty on GET requests → RBAC check returned "not admin".
-  // Now uses POST so req.body carries the decoded userId from the JWT.
   const fetchAllOrders = async (silent = false) => {
     if (!token) return;
     if (!silent) setLoading(true);
@@ -32,20 +27,20 @@ const Orders = ({ url }) => {
     try {
       const response = await axios.post(
         `${url}/api/order/list`,
-        {},                          // empty body — userId injected by authMiddleware
+        {},
         { headers: { token } }
       );
 
       if (response.data.success) {
         setOrders(response.data.data);
       } else if (response.data.message?.toLowerCase().includes("not admin")) {
-        // Token valid but user is not admin — force logout
         toast.error("Session invalid. Please log in again.");
         logout();
         navigate("/");
       } else {
         setError(response.data.message || "Failed to load orders.");
-        if (!silent) toast.error(response.data.message || "Failed to load orders.");
+        if (!silent)
+          toast.error(response.data.message || "Failed to load orders.");
       }
     } catch (err) {
       console.error("fetchAllOrders error:", err);
@@ -68,13 +63,12 @@ const Orders = ({ url }) => {
       );
       if (response.data.success) {
         toast.success(response.data.message);
-        // Optimistic local update — no need to refetch
         setOrders((prev) =>
           prev.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o))
         );
       } else {
         toast.error(response.data.message || "Status update failed.");
-        await fetchAllOrders(true); // re-sync from server
+        await fetchAllOrders(true);
       }
     } catch (err) {
       console.error("statusHandler error:", err);
@@ -83,7 +77,6 @@ const Orders = ({ url }) => {
   };
 
   // ─── Confirm order (new dedicated endpoint) ───────────────────────────────
-  // BUG FIX #31: New confirmOrder endpoint added per spec.
   const confirmOrder = async (orderId) => {
     try {
       const response = await axios.put(
@@ -111,9 +104,6 @@ const Orders = ({ url }) => {
 
   // ─── Guard + mount ────────────────────────────────────────────────────────────
   useEffect(() => {
-    // BUG FIX #32: Original guard was `!admin && !token` (AND) — only
-    // redirected when BOTH were falsy. A user with a token but admin=false
-    // could reach the orders page. Changed to OR.
     if (!admin || !token) {
       toast.error("Please login as admin first.");
       navigate("/");
@@ -122,7 +112,6 @@ const Orders = ({ url }) => {
 
     fetchAllOrders();
 
-    // Set up periodic polling for real-time-ish order updates
     if (POLL_INTERVAL_MS > 0) {
       pollRef.current = setInterval(() => fetchAllOrders(true), POLL_INTERVAL_MS);
     }
@@ -176,17 +165,58 @@ const Orders = ({ url }) => {
       ) : (
         <div className="order-list">
           {orders.map((order, index) => (
-            <div key={index} className="order-item">
+            <div key={order._id || index} className="order-item">
               <img src={assets.parcel_icon} alt="" />
 
               <div>
-                <p className="order-item-food">
-                  {order.items.map((item, i) =>
-                    i === order.items.length - 1
-                      ? `${item.name} x ${item.quantity}`
-                      : `${item.name} x ${item.quantity}, `
-                  )}
-                </p>
+                <div className="order-item-food">
+                  {order.items.map((item, i) => (
+                    <div key={i} className="order-item-entry">
+                      <p>
+                        {item.name} x {item.quantity}
+                        {i < order.items.length - 1 ? "," : ""}
+                      </p>
+
+                      {item.customizations && (
+                        <div
+                          className="order-item-customizations"
+                          style={{
+                            fontSize: "12px",
+                            color: "#555",
+                            marginTop: "2px",
+                            marginBottom: "6px",
+                            paddingLeft: "8px",
+                            borderLeft: "2px solid tomato",
+                          }}
+                        >
+                          {item.customizations.spice && (
+                            <p style={{ margin: 0 }}>
+                              <strong>Spice:</strong>{" "}
+                              {item.customizations.spice}
+                            </p>
+                          )}
+                          {item.customizations.instructions && (
+                            <p style={{ margin: 0 }}>
+                              <strong>Instructions:</strong>{" "}
+                              {item.customizations.instructions}
+                            </p>
+                          )}
+                          <p style={{ margin: 0 }}>
+                            <strong>Add-ons:</strong>{" "}
+                            {item.customizations.addons?.length > 0
+                              ? item.customizations.addons
+                                  .map((a) =>
+                                    typeof a === "string" ? a : a.name
+                                  )
+                                  .join(", ")
+                              : "None"}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
                 <p className="order-item-name">
                   {order.address.firstName} {order.address.lastName}
                 </p>
