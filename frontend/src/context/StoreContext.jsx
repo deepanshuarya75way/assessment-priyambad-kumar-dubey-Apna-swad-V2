@@ -6,21 +6,25 @@ import { toast } from "react-toastify";
 export const StoreContext = createContext(null);
 
 const StoreContextProvider = ({ children }) => {
-  const [cartItems, setCartItems]   = useState({});
-  const [food_list, setFoodList]    = useState([]);
-  const [token, setToken]           = useState("");
-  // BUG FIX #19: VITE_BACKEND_URL was read directly — if undefined every
-  // axios call went to "undefined/api/..." and silently 404-ed.
-  // Added a localhost fallback so dev still works without a .env file.
+  const [cartItems, setCartItems] = useState({});
+  const [cartCustomizations, setCartCustomizations] = useState({});
+  const [food_list, setFoodList] = useState([]);
+  const [token, setToken] = useState("");
   const url = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
 
   // ─── Cart: add ──────────────────────────────────────────────────────────────
-  const addToCart = async (itemId) => {
-    // Optimistic UI update first
+  const addToCart = async (itemId, customization) => {
     setCartItems((prev) => ({
       ...prev,
       [itemId]: (prev[itemId] || 0) + 1,
     }));
+
+    if (customization) {
+      setCartCustomizations((prev) => ({
+        ...prev,
+        [itemId]: customization,
+      }));
+    }
 
     if (token) {
       try {
@@ -30,7 +34,6 @@ const StoreContextProvider = ({ children }) => {
           { headers: { token } }
         );
         if (!response.data.success) {
-          // Roll back optimistic update on failure
           setCartItems((prev) => ({
             ...prev,
             [itemId]: Math.max((prev[itemId] || 1) - 1, 0),
@@ -49,10 +52,20 @@ const StoreContextProvider = ({ children }) => {
 
   // ─── Cart: remove ────────────────────────────────────────────────────────────
   const removeFromCart = async (itemId) => {
+    const nextQty = Math.max((cartItems[itemId] || 0) - 1, 0);
+
     setCartItems((prev) => ({
       ...prev,
-      [itemId]: Math.max((prev[itemId] || 0) - 1, 0),
+      [itemId]: nextQty,
     }));
+
+    if (nextQty === 0) {
+      setCartCustomizations((prev) => {
+        const updated = { ...prev };
+        delete updated[itemId];
+        return updated;
+      });
+    }
 
     if (token) {
       try {
@@ -62,7 +75,6 @@ const StoreContextProvider = ({ children }) => {
           { headers: { token } }
         );
         if (!response.data.success) {
-          // Roll back
           setCartItems((prev) => ({
             ...prev,
             [itemId]: (prev[itemId] || 0) + 1,
@@ -85,7 +97,11 @@ const StoreContextProvider = ({ children }) => {
     for (const itemId in cartItems) {
       if (cartItems[itemId] > 0) {
         const item = food_list.find((p) => p._id === itemId);
-        if (item) total += item.price * cartItems[itemId];
+        if (item) {
+          const addons = cartCustomizations[itemId]?.addons || [];
+          const extraCost = addons.reduce((sum, a) => sum + (a.price || 0), 0);
+          total += (item.price + extraCost) * cartItems[itemId];
+        }
       }
     }
     return total;
@@ -106,9 +122,6 @@ const StoreContextProvider = ({ children }) => {
   };
 
   // ─── Cart sync from server ───────────────────────────────────────────────────
-  // BUG FIX #20: loadCardData (typo) had no error handling — if the token
-  // was expired the catch was silent and cartItems was left as `undefined`
-  // (response.data.cartData could be null), crashing getTotalCartAmount.
   const loadCartData = async (authToken) => {
     try {
       const response = await axios.post(
@@ -121,7 +134,6 @@ const StoreContextProvider = ({ children }) => {
       }
     } catch (err) {
       console.warn("Could not load cart data:", err.message);
-      // Non-fatal — user can still browse and add items
     }
   };
 
@@ -142,6 +154,7 @@ const StoreContextProvider = ({ children }) => {
     food_list,
     cartItems,
     setCartItems,
+    cartCustomizations,
     addToCart,
     removeFromCart,
     getTotalCartAmount,

@@ -5,17 +5,23 @@ import { useNavigate } from "react-router-dom";
 
 const Cart = () => {
   const {
-    food_list, cartItems, addToCart,
-    removeFromCart, getTotalCartAmount, url
+    food_list,
+    cartItems,
+    removeFromCart,
+    getTotalCartAmount,
+    url,
+    cartCustomizations,
   } = useContext(StoreContext);
 
   const navigate = useNavigate();
 
-  const hasItems = food_list.some(item => cartItems[item._id] > 0);
+  const hasItems = food_list?.some((item) => cartItems?.[item._id] > 0);
 
   return (
     <div className="cart">
-      <h2 className="cart-title">Your <span>Cart</span></h2>
+      <h2 className="cart-title">
+        Your <span>Cart</span>
+      </h2>
 
       <div className="cart-items">
         <div className="cart-items-title">
@@ -33,22 +39,49 @@ const Cart = () => {
             <p>Your cart is empty. Add some delicious food! 🍛</p>
           </div>
         ) : (
-          food_list.map((item, index) => {
-            if (cartItems[item._id] > 0) {
+          food_list.map((item) => {
+            if (cartItems?.[item._id] > 0) {
+              const custom = cartCustomizations?.[item._id];
+              const extraCost =
+                custom?.addons?.reduce((sum, a) => sum + (a.price || 0), 0) || 0;
+              const unitPrice = item.price + extraCost;
+
               return (
-                <div key={index}>
+                <div key={item._id}>
                   <div className="cart-items-title cart-items-item">
                     <img src={url + "/images/" + item.image} alt={item.name} />
-                    <p>{item.name}</p>
-                    <p>₹{item.price}</p>
+                    <div>
+                      <p>{item.name}</p>
+                      {custom && (
+                        <>
+                          <p>Spice: {custom.spice || "Medium"}</p>
+                          <p>
+                            Add-ons:{" "}
+                            {custom.addons?.length > 0
+                              ? custom.addons
+                                  .map((a) => `${a.name} (+₹${a.price})`)
+                                  .join(", ")
+                              : "None"}
+                          </p>
+                        </>
+                      )}
+                    </div>
+
+                    <p>₹{unitPrice}</p>
                     <p>{cartItems[item._id]}</p>
-                    <p>₹{item.price * cartItems[item._id]}</p>
-                    <p onClick={() => removeFromCart(item._id)} className="cross">×</p>
+                    <p>₹{unitPrice * cartItems[item._id]}</p>
+                    <p
+                      onClick={() => removeFromCart(item._id)}
+                      className="cross"
+                    >
+                      ×
+                    </p>
                   </div>
                   <hr />
                 </div>
               );
             }
+            return null;
           })
         )}
       </div>
@@ -69,17 +102,21 @@ const Cart = () => {
             <hr />
             <div className="cart-total-details">
               <b>Total</b>
-              <b>₹{getTotalCartAmount() === 0 ? 0 : getTotalCartAmount() + 2}</b>
+              <b>
+                ₹{getTotalCartAmount() === 0 ? 0 : getTotalCartAmount() + 2}
+              </b>
             </div>
           </div>
-          <button onClick={() => navigate('/order')}>
+          <button onClick={() => navigate("/order")}>
             Proceed to Checkout →
           </button>
         </div>
 
         <div className="cart-promocode">
           <p className="cart-promocode-label">Have a promo code?</p>
-          <p className="cart-promocode-sub">Enter your code below to get a discount</p>
+          <p className="cart-promocode-sub">
+            Enter your code below to get a discount
+          </p>
           <div className="cart-promocode-input">
             <input type="text" placeholder="Enter promo code" />
             <button>Apply</button>
