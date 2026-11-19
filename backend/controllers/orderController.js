@@ -34,6 +34,7 @@ const placeOrder = async (req, res) => {
         .json({ success: false, message: "Cart is empty." });
     }
 
+    //save the items alongwith customization to database
     const newOrder = new orderModel({ userId, items, amount, address });
     await newOrder.save();
 

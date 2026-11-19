@@ -10,7 +10,7 @@ const Cart = () => {
     removeFromCart,
     getTotalCartAmount,
     url,
-    cartCustomizations,
+    cartCustomizations,//
   } = useContext(StoreContext);
 
   const navigate = useNavigate();

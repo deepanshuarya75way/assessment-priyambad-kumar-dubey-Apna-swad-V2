@@ -16,11 +16,11 @@ const Field = ({ label, ...props }) => (
 const PlaceOrder = () => {
   const navigate = useNavigate();
   const {
-    getTotalCartAmount,
+    getTotalCartAmount,//from store context
     token,
     food_list,
     cartItems,
-    cartCustomizations,
+    cartCustomizations,//change
     url,
   } = useContext(StoreContext);
 
@@ -70,7 +70,7 @@ const PlaceOrder = () => {
             ...item,
             price: item.price + extraCost,
             quantity: cartItems[item._id],
-            customizations: custom || null,
+            customizations: custom || null,//change due to customization
           };
         });
 
@@ -141,7 +141,7 @@ const PlaceOrder = () => {
           <div>
             <div className="cart-total-details">
               <p>Subtotal</p>
-              <p>₹{getTotalCartAmount()}</p>
+              <p>₹{getTotalCartAmount()}</p> 
             </div>
             <hr />
             <div className="cart-total-details">

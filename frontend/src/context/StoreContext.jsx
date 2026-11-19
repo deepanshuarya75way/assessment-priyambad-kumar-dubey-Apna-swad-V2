@@ -7,12 +7,14 @@ export const StoreContext = createContext(null);
 
 const StoreContextProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState({});
-  const [cartCustomizations, setCartCustomizations] = useState({});
+  const [cartCustomizations, setCartCustomizations] = useState({});//adding customization state
   const [food_list, setFoodList] = useState([]);
   const [token, setToken] = useState("");
   const url = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
 
   // ─── Cart: add ──────────────────────────────────────────────────────────────
+
+  //adding customization state
   const addToCart = async (itemId, customization) => {
     setCartItems((prev) => ({
       ...prev,

@@ -6,6 +6,7 @@ import FoodCustomization from "../FoodCustomization/FoodCustomization";
 
 const FoodItem = ({ id, name, price, description, image }) => {
   const { cartItems, addToCart, removeFromCart, url } = useContext(StoreContext);
+  //popup  visible
   const [showCustomization, setShowCustomization] = useState(false);
 
   const food = { id, name, price, description, image };
@@ -62,11 +63,11 @@ const FoodItem = ({ id, name, price, description, image }) => {
 
       {showCustomization && (
         <FoodCustomization
-          food={food}
+          food={food}//passes 
           onClose={() => setShowCustomization(false)}
           onAddToCart={(item, customization) => {
             addToCart(item.id, customization);
-          }}
+          }}//passes to store context
         />
       )}
     </>
